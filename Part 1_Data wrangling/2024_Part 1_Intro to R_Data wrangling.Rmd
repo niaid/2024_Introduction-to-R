@@ -1,0 +1,510 @@
+---
+title: "Part 1_Intro to R_Data wrangling"
+author: "Yuyan Yi"
+date: "2024-03-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Outline
+
+1. R install
+2. Operators
+3. library install, load
+4. dataset import
+
+
+## 1. Installing required software and background
+
+The course requires an installation of R version 4.3.3 and Rstudio.  You may install R and Rstudio directly from the following web sites:
+
+* [R install](https://cran.r-project.org/)
+* [R studio](https://www.rstudio.com/products/rstudio/)
+
+Additional information on manual installation can be found [HERE](https://rstudio-education.github.io/hopr/starting.html#how-to-download-and-install-r)
+
+Alternatively, if within the NIAID enterprise, you may install using self-service:
+
+* [Windows Software Center](https://inside.niaid.nih.gov/it-equipment/installing-scientific-software-using-software-center)
+* [Mac Self Service](https://inside.niaid.nih.gov/it-equipment/installing-scientific-software-mac-self-service)
+
+* The difference between R and RStudio:
+R is a programming language and software environment for statistical computing and graphics, RStudio is an integrated development environment (IDE) that provides a user-friendly interface for working with R. RStudio is designed to enhance the R experience by providing tools and features that make it easier to write, test, and debug R code, as well as manage projects and data.
+
+
+##### 1.1 Create workspace
+* create/close project
+* panel layout (Tools--Global Options--Panel Layout)
+* save script
+
+##### 1.2 Set working directory  
+* set work directory: setwd("file_path") or setwd(file.choose()) to manually select a path   
+* get work directory: getwd()  
+
+```{r eval=FALSE}
+setwd("~/OneDrive - National Institutes of Health/Documents/BCBB training course/2024_R")
+getwd()
+```
+
+## 2 Operator
+* see the full list from [manual:3.1.4 Operators](https://cran.r-project.org/doc/manuals/r-release/R-lang.pdf)  
+
+| Operator         | Description                                    |
+|------------------|------------------------------------------------|
+| `<-`             | Left assignment, binary                        |
+| `$`              | List subset, binary                            |
+| `%in%`           | Matching operator, binary (in model formulae: nesting)  |
+| `<`              | Less than, binary                              |
+| `>`              | Greater than, binary                           |
+| `==`             | Equal to, binary                               |
+| `>=`             | Greater than or equal to, binary               |
+| `<=`             | Less than or equal to, binary                  |
+| `&`              | And, binary, vectorized                        |
+| `&&`             | And, binary, not vectorized                    |
+| `|`              | Or, binary, vectorized                         |
+| `||`             | Or, binary, not vectorized                     |
+
+```{r echo=TRUE}
+#create variable
+a = 2
+a <- 2
+
+#logical 
+a < - 2
+a == 2
+a <= 2
+
+#arithmetic expressions
+x <- 2 * a
+y1 <- 2 * (a + log(x)) #default natural logarithm
+y2 <- 2 * (a + log(x, base = exp(1))) #specify base
+y3 <- 2 * (a + log10(x))
+y4 <- 2 * (a + log2(x))
+
+#round numbers
+y <- round(y1,4)
+
+#create numerical vector
+x <- rnorm(10) #random generate a vector that length = 10, standard normal distribution
+x[2] #extract a value from vector based on the index
+x[2:7] #subset the vector
+
+#create charactor vector
+x <- c("apple","pear","peach","watermelon","banana")
+x[2]
+x[-1] #remove an element from vector based on the index
+a = "apple"
+a %in% x #check if element is in a vector
+
+#create factor vector
+risk <- c(rep("high",20), rep("medium", 30),rep("low",10))
+risk1 <- factor(risk)
+risk2 <- factor(risk, levels = c("high","medium","low"))
+
+#create list,which could contains multiple different type of elements
+L = list()
+L[[1]] = "apple"
+L[[2]] = c(1:5)
+L[[3]] = TRUE
+L[[4]] = matrix(rnorm(10),2,5)
+
+#assign the name to each element
+names(L) = c("L_Character","L_Number","L_Logical","L_Matrix") 
+#extract an element from list by its name
+L$L_Number 
+#extract an element from list by its index
+L[[2]] 
+
+#create matrix
+A <- matrix(data = runif(24, min= -1, max = 1), nrow = 4, ncol = 6)
+A[2,5] #extract a value from matrix based on the row and column index
+A[1:2,] #extract first two rows from matrix
+A[,-c(1,3)] #remove 1st, 3rd columns from matrix
+
+#create data frame
+D <- data.frame(age = c(2,1,4,3,5), 
+                animal = c("dog","cat","sheep","panda","tiger"), 
+                ifmale = c(T,F,T,F,T), 
+                weight = c(5.2,2.2,30.5,124.1,90.3))
+row.names(D) = c("sample1","sample2","sample3","sample4","sample5") #assign row name 
+D$animal #subset one variable
+D[D$ifmale==T,] #subset rows with condition
+D[D$ifmale==T & D$weight>10,] #subset rows with multiple conditions
+D[D$ifmale!=T | D$age<=2,] #subset rows with multiple conditions
+
+
+#remove objects from current environment
+rm(A)
+remove(A)
+A
+```
+
+
+## 3. Installing R packages
+
+Package quality varies and some important considerations on whether a particular package is trustworthy include some of the following considerations shown below.  A great example of a trustworthy package is [ggplot2](https://ggplot2.tidyverse.org/).  Please check out the package website and see if you can find examples of the following.
+
+* Status of development life cycle showing a robust set of testing used to assess package functionality
+* Amount of code used in the package that is covered by various tests
+* Sharing of the package on CRAN which include a set of standard tests to assess package functionality
+* Detailed documentation on what the package does, its functions, and how to use it
+* A strong user base (we will check this by installing and using a package called cranlogs below)
+
+
+##### 3.1 Now let's install our first R package to get some statistics on the number of downloads a particular R package has:
+
+```{r eval=FALSE}
+## The install.packages function is used to install new R packages via command line
+## We will use it to install cranlogs that can tell us about how many times an R package is downloaded
+install.packages("cranlogs")
+#install packacges once
+install.packages(c("readr", "dplyr", "Stat2Data","ggplot2")) # install multiple packages
+
+#alternative way to install packages
+#"Packages" --> "Install" --> e.g."BiocManager"
+
+#install from website
+#e.g. Bioconductor
+#Bioconductor is a free, open source and open development software project for the analysis and comprehension of genomic data generated by wet lab experiments in molecular biology.
+
+
+#Install a package from Github
+#GitHub is a repository useful for all software development and data analysis, including R packages. It makes sharing your package easy. You can read more about GitHub here: Git and GitHub, by Hadley Wickham.
+
+#To install a package from GitHub, the R package devtools (by Hadley Wickham) can be used. You should first install devtools if you don’t have it installed on your computer.
+
+#For example, the following R code installs the latest version of survminer R package developed by A. Kassambara (https://github.com/kassambara/survminer).
+#rare case
+install.packages("devtools")
+devtools::install_github("kassambara/survminer")
+library(survminer)
+
+#load packages everytime when you run project
+library(readr)
+library(readxl)
+library(dplyr)
+library(Stat2Data)
+library(ggplot2)
+library(MASS)
+library(BiocManager)
+library(dplyr)
+
+```
+
+##### 3.2 Let's use `cranlogs` package to determine how many downloads `ggplot2` package has
+
+```{r}
+## To load an R package, we use the library function
+library(cranlogs)
+
+## Lets see how many downloads ggplot2 had in 2021
+ggplot2_dls <- cran_downloads(packages = "ggplot2", from = "2023-01-01", to = "2023-12-31")
+
+# We can see that the average daily downloads of ggplot2 is over 80k!
+mean(ggplot2_dls$count)
+
+```
+
+##### 3.3  Check version of R and loaded packages
+
+```{r}
+sessionInfo()
+```
+
+##### 3.4 help information
+
+R includes a series of functions for providing the help documentation and other such information concerning packages and their related functions.
+
+There are four commonly used way to search for help:
+
+The `?` and `??` are short hands for help() and help.search() respectively.
+
+Use the first function when you know exactly what to search for, and the second function when you know approximately what to search for.
+
+```{r}
+#Documentation Shortcuts
+?print
+help("print")
+
+#Search the Help System
+??print
+help.search("print") 
+```
+
+## 4. Dataset import and export
+
+*click:
+Step1: "Import Dataset"
+Step2: "From Text(base)...",for txt and csv files, doesn't work for excel file
+       "From Text(readr)...",for txt and csv files, doesn't work for excel file, provide code and preview of imported dataframe (Recommend)
+       "From Excel...",for excel file, provide code and preview of imported dataframe (Recommend)
+       
+*load corresponding package for different type of data files.
+*choose appropriate function and specify the type of variable in the dataset.
+
+```{r echo=TRUE}
+library(readr)
+#text file
+framingham.txt <- read.delim("framingham.txt")
+framingham.txt <- read_delim("framingham.txt", delim = "\t", escape_double = FALSE, trim_ws = TRUE)
+#csv file
+framingham.csv <- read.csv("framingham.csv")
+
+#excel file
+library(readxl)
+framingham.xlsx <- read_excel("framingham.xlsx")
+
+#export file
+write.csv(x = framingham.csv, file = "framingham_test.csv", row.names = F) # If you do not specify row.names = F then the row names will be written out, there are other function inputs you can look up using help(write.csv)
+```
+
+
+
+## 5. Basic data manipulations
+
+```{r echo=TRUE}
+#dimension of dataframe
+dim(framingham.csv)
+#basic summary of variables
+summary(framingham.csv)
+#see all variable type
+sapply(framingham.csv, class)
+#displays the internal structure of an object such as an array, list, matrix, factor, or data frame
+str(framingham.csv)
+#first six (default) rows of the data
+head(framingham.csv)
+head(framingham.csv,n = 10)
+
+#check missing value
+is.na(framingham.csv)
+#count the number of missing values
+sum(is.na(framingham.csv)) 
+#count the number of missing value for each column
+colSums(is.na(framingham.csv)) 
+#remove rows/observations that contains missing value
+framingham = na.omit(framingham.csv)
+dim(framingham)
+summary(framingham)
+
+#focus on one variable
+education <- framingham$education
+mean(education) # average
+sd(education) # standard deviation
+sum(education) # summation
+
+unique(education) # return all unique value in factor
+length(unique(education)) # return the number of unique value in factor
+
+#convert to factor/categorical variable
+summary(education) #summary of numerical variable
+education = factor(education)
+summary(education) #summary of categorical variable
+table(education) # same as summary() for categorical variable
+
+#subset dataframe based on condition
+#subset column
+# select three columns: education, BMI, male
+select <- framingham[,c("education", "BMI", "male")]
+
+#subset row
+#method 1
+framingham.male = framingham[framingham$male==1,]
+framingham.male.obesity= framingham[framingham$male==1 & framingham$BMI >=30,]
+
+#method 2
+framingham.male = subset(framingham, male == 1)
+
+#arrange  
+# Order the data by ascending age and education
+head(arrange(framingham, age))
+head(arrange(framingham, age, education))
+
+# Order age by descending
+head(arrange(framingham, desc(age)))
+
+#create new variable
+framingham$gender <- ifelse(framingham$male==1, "Male", "Female"); gender = framingham$gender
+summary(gender)
+gender = factor(gender, levels = c("Male", "Female")) #convert to factor variable
+summary(gender)
+
+#merge dataframe (Adding Rows)
+framingham.male = subset(framingham, male == 1)
+framingham.female = subset(framingham, male == 0)
+framingham.mergerow = rbind(framingham.male,framingham.female)
+
+#merge dataframe (Adding Columns)
+framingham$id = paste0("Sample_",c(1:nrow(framingham)))
+framingham.1 = framingham[,c(1:5,18)] #subset 1~5 variables with sample_id
+framingham.2 = framingham[,c(6:10,18)] #subset 6~10 variables with sample_id
+framingham.mergecol <- merge(framingham.2,framingham.2,by="id")
+
+```
+
+
+## 6. Data Structure conversion
+
+### 6.1 Dataset with repeated measures
+```{r echo=TRUE}
+
+olddata_wide <- read.table(header=TRUE, text='
+ subject sex control cond1 cond2
+       1   M     7.9  12.3  10.7
+       2   F     6.3  10.6  11.1
+       3   F     9.5  13.1  13.8
+       4   M    11.5  13.4  12.9
+')
+# Make sure the subject column is a factor
+olddata_wide$subject <- factor(olddata_wide$subject)
+
+#from wide to long
+#method 1
+library(tidyr)
+data_long1 <- gather(olddata_wide, condition, measurement, control:cond2, factor_key=TRUE)
+data_long1 <- gather(olddata_wide, condition, measurement, control, cond1, cond2)
+
+#method 2
+library(reshape2)
+# Specify id.vars: the variables to keep but not split apart on
+data_long2 <- melt(olddata_wide, id.vars=c("subject", "sex"), variable.name="condition", value.name="measurement")
+
+#from long to wide
+olddata_long <- read.table(header=TRUE, text='
+ subject sex condition measurement
+       1   M   control         7.9
+       1   M     cond1        12.3
+       1   M     cond2        10.7
+       2   F   control         6.3
+       2   F     cond1        10.6
+       2   F     cond2        11.1
+       3   F   control         9.5
+       3   F     cond1        13.1
+       3   F     cond2        13.8
+       4   M   control        11.5
+       4   M     cond1        13.4
+       4   M     cond2        12.9
+')
+# Make sure the subject column is a factor
+olddata_long$subject <- factor(olddata_long$subject)
+#method 1
+data_wide1 <- spread(olddata_long, condition, measurement)
+
+#method 2
+data_wide2 <- dcast(olddata_long, subject + sex ~ condition, value.var="measurement")
+
+```
+
+
+## 7. Execute externel R script
+
+##### 7.1  run and save objects from externel R script
+```{r}
+source("Hello_world.R")
+```
+
+##### 7.2  run and save functions defined from externel R script
+```{r}
+source("functions.R")
+
+#add function with return
+
+#find mode value from vector education
+mode(education)
+table(education)
+
+#calculate circle_area with radius = 5
+r = 5
+circle_area(r)
+#calculate circumference with radius = 5
+circumference(r)
+#print the result in a sentence
+print(paste0("For circle with r = ", r, ", the area of circle is ", round(circle_area(r),4), ", there circumference of circle is ",round(circumference(r),4), "." ))
+
+#check sign of value
+check(10)
+
+```
+
+
+## 8. Exercise questions
+
+#### 8.0 Check the current path
+
+```{r echo=TRUE}
+getwd()
+setwd("~/OneDrive - National Institutes of Health/Documents/BCBB training course/2024_R")
+getwd()
+```
+
+
+#### 8.1 Import Dataset "BirdNest.csv"
+
+```{r echo=TRUE}
+library(readr)
+BirdNest <- read_csv("BirdNest.csv")
+```
+
+#### 8.2 Check dimension and column names of dataset
+
+```{r echo=TRUE}
+dim(BirdNest)
+colnames(BirdNest)
+```
+
+#### 8.3 Data preprocessing
+
+```{r echo=TRUE}
+#remove missing value
+BirdNest <- na.omit(BirdNest)
+#print first 10 rows of dataset
+head(BirdNest,n=10)
+#basic summary of variables
+summary(BirdNest)
+#see all variable type
+sapply(BirdNest, class)
+#add a new column "measure1" with random normal distribution mean = 10, standard deviation = 0.1
+BirdNest$measure1 = rnorm(n=nrow(BirdNest),10,0.1)
+#add a new column "measure2" with random uniform distribution a = -1, standard deviation = 1
+BirdNest$measure2 = runif(n=nrow(BirdNest),-1,1)
+#add a new column "measure3" with random poisson distribution lambda = 5
+BirdNest$measure3 = rpois(n=nrow(BirdNest),5)
+
+```
+
+#### 8.4 Data Exploration
+
+```{r echo=TRUE}
+
+#return all unique value with frequency in Location variable of BirdNest
+table(BirdNest$Location) 
+#return all unique value in factor
+unique(BirdNest$Location) 
+#return the number of unique value in factor
+length(unique(BirdNest$Location)) 
+
+```
+
+
+
+## Next steps
+
+Today you have learned a lot about how to manipulate and work with data using the R programming language.  Please feel free to practice what we learned today using "BirdNest.csv" (attached) or your own dataset.
+
+Hopefully this will help you get started with analyzing your own data!  Nonetheless, this is just the beginning of your journey into data science with R.  Below you will see some recommended resources to follow up with to continue learning.
+
+* [Intro to R](https://cran.r-project.org/doc/manuals/r-release/R-intro.pdf)
+* [Coursera Data Science Specialization](https://www.coursera.org/specializations/jhu-data-science)
+* [R for Data Science Book](https://r4ds.had.co.nz/index.html)
+* List and resources of useful R packages:
+  + [Rstudio's recommendations](https://support.rstudio.com/hc/en-us/articles/201057987-Quick-list-of-useful-R-packages)
+  + [Computerworld list](https://www.computerworld.com/article/2921176/great-r-packages-for-data-import-wrangling-visualization.html)
+  + [Awesome R GitHub list](https://github.com/qinwf/awesome-R)
+  + [CRAN Package Topics](https://cran.r-project.org/web/views/)
+  + [Bioconductor for bioinformatics R packages](https://www.bioconductor.org/)
+
+In the second part, we will introduce some classical and fancy approaches in R for data visualization using packages ggplot2, etc.
+
+
