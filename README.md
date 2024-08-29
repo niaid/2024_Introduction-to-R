@@ -1,6 +1,6 @@
 # 2024_Introduction-to-R
 
-The goal of this repository is to provide a series of course materials that is used for online seminars to introduce R programming. Each subfolder in the respository provides materials for a specific course in the seminar series.
+The goal of this repository is to provide a series of course materials that is used for online seminars to introduce R programming. Each subfolder in the respository provides materials for a specific course in the seminar series.  It includes the required code and presentation slides. It requires R version 4.2.1+ as well as Rstudio and materials include the guidance for R package installation.
 
 Instructors: Yuyan Yi, Mina Peyton
 
