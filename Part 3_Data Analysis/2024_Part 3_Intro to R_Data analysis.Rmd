@@ -1,0 +1,816 @@
+---
+title: "Part 3_Intro to R_Data analysis"
+author: "Yuyan Yi"
+date: "2024-09-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Import dataset
+```{r echo=TRUE}
+library(readr)
+framingham <- read_csv("framingham.csv")
+
+#remove missing value
+framingham <- na.omit(framingham)
+
+# Check the structure of the dataframe
+str(framingham)
+```
+The variables are as follows:
+
+*sex : the gender of the observations. The variable is a binary named “male” in the dataset.
+
+*age : Age at the time of medical examination in years. (continuous)
+
+*education : A categorical variable of the participants education, with the levels: Some high school (1), high school/GED (2), some college/vocational school (3), college (4) (categorical)
+
+*currentSmoker: Current cigarette smoking at the time of examinations (binary)
+
+*cigsPerDay: Number of cigarettes smoked each day
+
+*BPmeds: whether or not the patient was on blood pressure medication (binary)
+
+*prevalentStroke: whether or not the patient had previously had a stroke (binary)
+
+*prevalentHyp: whether or not the patient was hypertensive (binary)
+
+*diabetes: whether or not the patient had diabetes (binary)
+
+*totChol: Total cholesterol (mg/dL) (continuous)
+
+*sysBP: Systolic Blood Pressure (mmHg) (continuous)
+
+*diaBP: Diastolic blood pressure (mmHg) (continuous)
+
+*BMI: Body Mass Index, weight (kg)/height (m)^2 (continuous)
+
+*heartRate: Heart rate (beats/minute) (continuous)
+
+*glucose: Blood glucose level (mg/dL) (continuous)
+
+*TenYearCHD: The 10 year risk of coronary heart disease(CHD). (binary: “1”, means “Yes”, “0” means “No”)
+
+
+## Correlation
+
+$\bf{Pearson \space correlation (r)}$, which measures a linear dependence between two variables (x and y). It’s also known as a parametric correlation test because it depends to the distribution of the data. It can be used only when x and y are from normal distribution.
+
+$\bf{Kendall \space \tau}$ and $\bf{Spearman \space \rho}$, which are rank-based correlation coefficients (non-parametric). 
+
+$\bf{Kendall’s \space \tau}$: usually smaller values than $\bf{Spearman \space \rho}$ correlation. Calculations based on concordant and discordant pairs. Insensitive to error. p values are more accurate with smaller sample sizes.
+
+$\bf{Spearman \space \rho}$: usually have larger values than $\bf{Kendall’s \space \tau}$.  Calculations based on deviations.  Much more sensitive to error and discrepancies in data.
+
+\line
+
+$\bf{-1}$ indicates a strong negative correlation : this means that every time x increases, y decreases.
+
+$\bf{0}$ means that there is no association between the two variables (x and y).
+
+$\bf{1}$ indicates a strong positive correlation : this means that y increases with x. 
+
+$\bf{Note \space for \space cor.test():}$
+
+Since the spearman correlation coefficient considers the rank of values, the correlation test ignores the same ranks to find the p-values as a result we get the warning “Cannot compute exact p-value with ties”. This can be avoided by using exact = FALSE inside the cor.test() function.
+The value t,z,S represents the test statistic for corresponding correlation test. These test statistics are used to determine the significance of the observed correlation.
+
+
+```{r echo=TRUE}
+#Pearson,Spearman, Kendall
+
+#check assumption
+#Shapiro-Wilk normality test
+#Null hypothesis: the variable comes from a normal distribution
+#Alternative hypothesis: the variable doesn't come from a normal distribution
+shapiro.test(framingham$sysBP) # => p < 2.2e-16
+shapiro.test(framingham$diaBP) # => p < 2.2e-16
+#Conclusion: Both sysBP and diaBP are not normal distributed.
+
+#QQ plot
+qqnorm(framingham$sysBP, pch = 1, frame = FALSE)
+qqline(framingham$sysBP, col = "steelblue", lwd = 2)
+
+qqnorm(framingham$diaBP, pch = 1, frame = FALSE)
+qqline(framingham$diaBP, col = "steelblue", lwd = 2)
+
+
+#correlation coefficient
+cor(framingham$sysBP, framingham$diaBP, method = "pearson")
+cor(framingham$sysBP, framingham$diaBP, method = "kendall")
+cor(framingham$sysBP, framingham$diaBP, method = "spearman")
+
+#correlation test
+#Null hypothesis: The correlation coefficient is equal to 0
+#Alternative hypothesis: The correlation coefficient is not equal to 0
+cor.test(framingham$sysBP, framingham$diaBP, method = c("pearson"),conf.level = 0.90)
+cor.test(framingham$sysBP, framingham$diaBP, method = c("kendall"),alternative = "less")
+cor.test(framingham$sysBP, framingham$diaBP, method = c("spearman"),exact = FALSE)
+
+
+#Visulization, heatmap
+plot(framingham$sysBP, framingham$diaBP)
+library("ggpubr")
+ggscatter(framingham, x = "sysBP", y = "diaBP", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "sysBP", ylab = "diaBP")
+
+#correlation matrix for multiple variables from dataset
+Cor.framingham = cor(framingham[,c("age","cigsPerDay","totChol","sysBP","diaBP","BMI","heartRate","glucose")])
+#view(Cor.framingham)
+
+library(corrplot)
+corrplot(Cor.framingham, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+```
+
+$\bf{Exercise1:}$ Is there significant correlation between "cigsPerDay" and "BMI"?
+
+
+```{r echo=TRUE}
+#check assumption
+shapiro.test(framingham$cigsPerDay) # => p < 2.2e-16
+shapiro.test(framingham$BMI) # => p < 2.2e-16
+
+#QQ plot
+qqnorm(framingham$cigsPerDay, pch = 1, frame = FALSE)
+qqline(framingham$cigsPerDay, col = "steelblue", lwd = 2)
+
+qqnorm(framingham$BMI, pch = 1, frame = FALSE)
+qqline(framingham$BMI, col = "steelblue", lwd = 2)
+
+cor.test(framingham$cigsPerDay, framingham$BMI, method = c("spearman"),exact = FALSE)
+
+
+```
+
+
+## Principla Component Analysis (PCA)
+
+PCA is used in exploratory data analysis.
+
+PCA commonly used for $\bf{dimensionality \space reduction}$ by using each data point onto only the first few principal components (most cases first and second dimensions) to obtain lower-dimensional data while keeping as much of the data’s variation as possible.
+
+$\bf{The \space  first \space principal \space component}$ can equivalently be defined as $a \space direction \space that \space maximizes \space the \space variance \space of \space the \space projected \space data.$
+
+The principal components are often analyzed by eigen-decomposition of the data covariance matrix or singular value decomposition (SVD) of the data matrix.
+
+$\bf{Question:}$ We are interested in the Heartdisease classification. (Set the $\bf{"TenYearCHD"}$ as dependent/response/Y variable.)
+
+Set $\bf{"age","cigsPerDay","totChol","sysBP","diaBP","BMI","heartRate","glucose"}$ as independent/exploratory/X variables.
+
+```{r echo=TRUE}
+framingham$TenYearCHD = factor(framingham$TenYearCHD)
+
+library(psych)
+pairs.panels(framingham[,c(2,5,10,11,12,13,14,15)],
+             gap=0,
+             bg = c("red", "blue")[framingham$TenYearCHD],
+             pch=21)
+```
+
+```{r echo=TRUE}
+#prcomp() from package "stats"
+pc <- prcomp(framingham[,c(2,5,10,11,12,13,14,15)],
+             center = TRUE, #variables should be shifted to be zero centered
+             scale = TRUE) #the variables should be scaled to have unit variance before the analysis takes place.
+print(pc)
+```
+
+$\bf{Interpretation}$ from Rotation matrix (Loading matrix):
+
+For example, PC1 increases when age, totChol, sysBP, BMI, etc., are increased and it is positively correlated whereas PC1 increases cigsPerDay decrease because these values are negatively correlated.
+
+```{r echo=TRUE}
+summary.pc = summary(pc)
+summary.pc
+```
+
+$\bf{Interpretation:}$  First five principal components explain the variability around 80.10% and they capture the majority of the variability.
+
+```{r echo=TRUE}
+#Scree plot
+# Extract the eigenvalues from the PCA object
+var.prop = summary.pc$importance[2,]
+plot(var.prop, type = "b",
+     xlab = "Principal Component",
+     ylab = "Variance explained")
+# Add a line at y = 1 to indicate the elbow
+abline(v = 2, col = "red")
+```
+
+```{r echo=TRUE}
+pairs.panels(pc$x,
+             gap=0,
+             bg = c("red", "blue")[framingham$TenYearCHD],
+             pch=21)
+```
+
+```{r echo=TRUE}
+#Bi-plot
+library(devtools)
+install_github("vqv/ggbiplot")
+library(ggbiplot)
+g <- ggbiplot(pc,
+              obs.scale = 1,
+              var.scale = 1,
+              groups = framingham$TenYearCHD,
+              ellipse = TRUE,
+              ellipse.prob = 0.68)
+g <- g + scale_color_discrete(name = '')
+g <- g + theme(legend.direction = 'horizontal',
+               legend.position = 'top')
+print(g)
+```
+
+$\bf{Interpret:}$
+
+1. PC1 explains about 30.2% and PC2 explained about 14.5% of variability.
+
+2. Arrows are closer to each other indicates the high correlation.
+
+ For example correlation between cigsPerDay vs age is weakly correlated.
+ 
+ Another way interpreting the plot is PC1 is positively correlated with the variables HeartRate, diaBP, BMI, sysBP, glucose, totChol, age, and PC1 is negatively correlated with cigsPerDay; PC2 is highly negatively correlated with cigsPerDay, heartRate, etc.
+
+Bi plot is an important tool in PCA to understand what is going on in the dataset.
+
+
+$\bf{Exercise 2:}$ If focus on male only, Set the "currentSmoker" as dependent/response/Y variable. Set "age", "cigsPerDay", "education", "totChol", "sysBP", "BMI", "heartRate", "glucose" as independent/exploratory/X variables, how many PCs could explain the variability above 60%? Can we separate two group of observations using first two PCs?
+
+```{r echo=TRUE}
+framingham.male = framingham[which(framingham$male==1),]
+framingham.male$currentSmoker = factor(framingham.male$currentSmoker)
+pc <- prcomp(framingham.male[,c("age","cigsPerDay","education","totChol","sysBP","BMI","heartRate","glucose")],
+             center = TRUE, #variables should be shifted to be zero centered
+             scale. = TRUE) #the variables should be scaled to have unit variance before the analysis takes place.
+summary(pc)
+
+g <- ggbiplot(pc,
+              obs.scale = 1,
+              var.scale = 1,
+              groups = framingham.male$currentSmoker,
+              ellipse = TRUE,
+              ellipse.prob = 0.68)
+g <- g + scale_color_discrete(name = '')
+g <- g + theme(legend.direction = 'horizontal',
+               legend.position = 'top')
+print(g)
+```
+
+## Statistical test
+
+### One sample t-test
+$\bf{Null \space hypothesis:}$ the mean BMI is equal to 25.
+
+$\bf{Alternative \space hypothesis:}$ the mean BMI is not equal to 25.
+
+Assumption: The values in each sample are normally distributed
+
+```{r echo=TRUE}
+#One-sample t-test
+t.test(framingham$BMI,alternative = "two.sided", mu=25, conf.level = 0.95)
+
+#check normality
+shapiro.test(framingham$BMI) # => p < 0.05 => the distribution of the data is not normal
+
+qqnorm(framingham$BMI, pch = 1, frame = FALSE)
+qqline(framingham$BMI, col = "steelblue", lwd = 2)
+
+
+#Alternative non-parametric test: Wilcoxon Rank Sum test 
+wilcox.test(framingham$BMI,alternative = "two.sided", mu=25, conf.level = 0.95)
+```
+
+### Two sample t-test
+$\bf{Null \space hypothesis:}$ Female's heart rate is less than or equal to male's average heart rate
+
+$\bf{Alternative \space hypothesis:}$ Female's heart rate is greater than male's average heart rate
+
+Assumption:
+
+1. Normality: The values in each sample are normally distributed
+
+2. Equal variances: The variances of the two samples are equal
+
+```{r echo=TRUE}
+#Two-sample t-test
+male = framingham$heartRate[framingham$male==1]
+female = framingham$heartRate[framingham$male!=1]
+
+#assume normal distribution and equal variance between two groups
+t.test(female,male,alternative = "greater",conf.level = 0.95,var.equal=TRUE)
+# p < 0.05 => Female's heart rate is significantly greater than male's average heart rate 
+
+#check normality
+shapiro.test(male) # => p < 0.05 => the distribution of the data is not normal
+shapiro.test(female) # => p < 0.05 => the distribution of the data is not normal
+
+qqnorm(male, pch = 1, frame = FALSE)
+qqline(male, col = "steelblue", lwd = 2)
+
+
+qqnorm(female, pch = 1, frame = FALSE)
+qqline(female, col = "steelblue", lwd = 2)
+
+#Homogeneity of Variance Test (normal distribution)
+#Null hypothesis: equal variance of heart rate between male and female
+bartlett.test(heartRate ~ male,data=framingham) 
+# => p = 0.0770 => equal variance of heart rate between male and female
+
+#Homogeneity of Variance Test (less sensitive to the normal distribution)
+#Null hypothesis: equal variance of heart rate between male and female
+library(car)
+framingham$male = factor(framingham$male)
+leveneTest(heartRate ~ male,data=framingham) # => p = 0.6932 => equal variance of heart rate between male and female
+
+#Alternative non-parametric test: Wilcoxon Rank Sum test 
+wilcox.test(female, male, alternative = "greater", conf.level = 0.95)
+# p = 1 => Female's heart rate is less than or equal to male's average heart rate
+```
+
+$\bf{Exercise 3:}$ Does current smoker have less glucose or not?
+
+Null: Current smoker's glucose is greater than or equal to non current smoker's average glucose
+
+Alternative: Current smoker's glucose is less than non current smoker's average glucose
+
+```{r echo=TRUE}
+smoke <- framingham$glucose[framingham$currentSmoker==1]
+nonsmoke <- framingham$glucose[framingham$currentSmoker==0]
+
+#check normality
+shapiro.test(smoke) # => p < 0.05 => the distribution of the data is not normal
+shapiro.test(nonsmoke) # => p < 0.05 => the distribution of the data is not normal
+
+qqnorm(smoke, pch = 1, frame = FALSE)
+qqline(smoke, col = "steelblue", lwd = 2)
+
+qqnorm(nonsmoke, pch = 1, frame = FALSE)
+qqline(nonsmoke, col = "steelblue", lwd = 2)
+
+
+#Alternative non-parametric test: Wilcoxon Rank Sum test 
+wilcox.test(smoke, nonsmoke, alternative = "less", conf.level = 0.95)
+#p < 0.05 => Current smoker's glucose is significantly less than non current smoker's average glucose
+
+```
+### Paired t-test
+
+Data: Each subject is measured twice before and after the treatment.
+
+$\bf{Null \space hypothesis:}$ there is no improvement in weight before and after the treatment.
+
+$\bf{Alternative \space hypothesis:}$ Treatment significantly improved the participants’ weight.
+
+```{r echo=TRUE}
+#Paired t-test
+before <- c(12.2, 14.6, 13.4, 11.2, 12.7, 10.4, 15.8, 13.9, 9.5, 14.2)
+after <- c(13.5, 15.2, 13.6, 12.8, 13.7, 11.3, 16.5, 13.4, 8.7, 14.6)
+data <- data.frame(subject = rep(c(1:10), 2), 
+                   time = as.factor(rep(c("before", "after"), each = 10)),
+                   score = c(before, after))
+str(data)
+```
+
+```{r echo=TRUE}
+#check normality
+shapiro.test(data$score[data$time=="before"]) 
+# => p =0.9453 => the distribution of the data are not significantly different from normal distribution
+shapiro.test(data$score[data$time=="after"]) 
+# => p=0.4234 => the distribution of the data are not significantly different from normal distribution
+
+qqnorm(data$score[data$time=="before"], pch = 1, frame = FALSE)
+qqline(data$score[data$time=="before"], col = "steelblue", lwd = 2)
+
+
+qqnorm(data$score[data$time=="after"], pch = 1, frame = FALSE)
+qqline(data$score[data$time=="after"], col = "steelblue", lwd = 2)
+
+#Homogeneity of Variance Test
+bartlett.test(score ~ time,data=data) 
+# => p =0.822 => equal variance of knowledge score between before and after group
+
+```
+
+```{r echo=TRUE}
+#test
+t.test(formula = score ~ time,
+       data = data,
+       alternative = "greater",
+       paired = TRUE,  
+       var.equal = TRUE,
+       conf.level = 0.95)
+# => p=0.0246 < 0.05
+#Treatment significantly increases the participants’ weight.
+```
+
+```{r echo=TRUE}
+#equivalent to one sample ttest for diff = after-before
+t.test(after-before,
+       alternative = "greater",
+       mu = 0,
+       conf.level = 0.95)
+```
+
+
+###  One-way ANOVA
+$\bf{Null \space hypothesis:}$ the means of BMI from all education levels are identical.
+
+$\bf{Alternative \space hypothesis:}$ There is at least one education level's average BMI different from others.
+
+
+```{r echo=TRUE}
+#one-way ANOVA
+library(dplyr)
+#Calculate summary statistics
+framingham$education=factor(framingham$education)
+group_by(framingham, education) %>%
+  dplyr::summarise(
+    count = n(),
+    mean = mean(BMI, na.rm = TRUE),
+    sd = sd(BMI, na.rm = TRUE)
+  )
+
+library("ggpubr")
+ggline(framingham, x = "education", y = "BMI",
+       add = c("mean_se"),color = "red",
+       add.params = list(color = "black"),
+       ylab = "BMI", xlab = "education")
+```
+
+```{r echo=TRUE}
+#assume normality and homogeneity of variance
+res.aov <- aov(BMI ~ education, data = framingham)
+summary(res.aov) 
+# => p < 2e-16 => at least one group if BMI is significantly different from others
+```
+
+### Multiple pairwise comparisons between group means
+
+```{r echo=TRUE}
+#Tukey HSD (Tukey Honest Significant Differences)
+TukeyHSD(res.aov)
+#the average BMI from education level one is significantly greater than the average BMI from all other three levels.
+```
+
+```{r echo=TRUE}
+# check normal distribution
+shapiro.test(framingham$BMI[framingham$education==1])
+shapiro.test(framingham$BMI[framingham$education==2])
+shapiro.test(framingham$BMI[framingham$education==3])
+shapiro.test(framingham$BMI[framingham$education==4])
+# => not normal distribution
+
+qqnorm(framingham$BMI[framingham$education==1], pch = 1, frame = FALSE)
+qqline(framingham$BMI[framingham$education==1], col = "steelblue", lwd = 2)
+
+qqnorm(framingham$BMI[framingham$education==2], pch = 1, frame = FALSE)
+qqline(framingham$BMI[framingham$education==2], col = "steelblue", lwd = 2)
+
+qqnorm(framingham$BMI[framingham$education==3], pch = 1, frame = FALSE)
+qqline(framingham$BMI[framingham$education==3], col = "steelblue", lwd = 2)
+
+qqnorm(framingham$BMI[framingham$education==4], pch = 1, frame = FALSE)
+qqline(framingham$BMI[framingham$education==4], col = "steelblue", lwd = 2)
+```
+
+
+```{r echo=TRUE}
+#Homogeneity of Variance Test
+bartlett.test(BMI ~ education, data = framingham) 
+# => p < 0.05 # different variance
+```
+
+```{r echo=TRUE}
+#ANOVA test with no equal variance assumption, but normal distribution
+oneway.test(BMI ~ education, data = framingham) 
+# => p-value < 2.2e-16 => at least one group are different from others
+```
+
+```{r echo=TRUE}
+#Pairwise t-tests with no assumption of equal variances
+pairwise.t.test(framingham$BMI, framingham$education,
+                 p.adjust.method = "BH", pool.sd = FALSE)
+#the average BMI from education level one is significantly different from the average BMI from all other three levels.
+```
+
+```{r echo=TRUE}
+#ANOVA test with no normal distribution
+#The Kruskal-Wallis rank-sum test is a non-parametric alternative to one-way ANOVA that can be employed when the ANOVA assumptions are not met.
+kruskal.test(BMI ~ education, data = framingham)
+
+pairwise.wilcox.test(framingham$BMI, framingham$education, p.adj = "bonf")
+```
+
+### Two-way ANOVA
+
+Two-way ANOVA test is used to evaluate simultaneously the effect of two grouping variables (A and B) on a response variable.
+
+The grouping variables are also known as factors. The different categories (groups) of a factor are called levels. The number of levels can vary between factors. The level combinations of factors are called cell.
+
+Two-way ANOVA test hypotheses:
+
+1: There is no difference in means of factor A
+
+2: There is no difference in means of factor B
+
+3: There is no interaction between factors A and B
+
+The alternative hypothesis for cases 1 and 2 is: the means are not equal.
+
+The alternative hypothesis for case 3 is: there is an interaction between A and B.
+
+Assumes that the observations within each cell are normally distributed and have equal variances.
+
+Let's focuse on "education","age" and "currentSmoker"
+
+```{r echo=TRUE}
+my_data <- framingham[c("education","age","currentSmoker")]
+my_data$currentSmoker <- ifelse(my_data$currentSmoker==1,"smoke","nonsmoke")
+
+my_data$education = factor(my_data$education)
+my_data$currentSmoker = factor(my_data$currentSmoker)
+
+str(my_data)
+table(my_data$currentSmoker,my_data$education)
+
+group_by(my_data, education,currentSmoker) %>%
+  dplyr::summarise(
+    count = n(),
+    mean = mean(age, na.rm = TRUE),
+    sd = sd(age, na.rm = TRUE)
+  )
+
+library(ggplot2)
+library(ggsci)
+ggboxplot(my_data, x = "education", y = "age", color = "currentSmoker") +
+  theme_minimal() +
+  scale_fill_simpsons() + #nejm
+  scale_color_simpsons()
+
+ggline(my_data, x = "education", y = "age", color = "currentSmoker",
+       add = c("mean_se", "violin"))+
+    theme_minimal() +
+  scale_fill_simpsons() + #nejm
+  scale_color_simpsons()
+
+```
+
+```{r echo=TRUE}
+res.aov2 <- aov(age ~ education + currentSmoker, data = my_data)
+summary(res.aov2)
+```
+From the ANOVA table we can conclude that age in each level of education and currentSmoke are statistically significantly difference.
+
+```{r echo=TRUE}
+# Two-way ANOVA with interaction effect
+# These two calls are equivalent
+res.aov3 <- aov(age ~ education * currentSmoker, data = my_data)
+res.aov3 <- aov(age ~ education + currentSmoker + education:currentSmoker, data = my_data)
+summary(res.aov3)
+
+```
+From the ANOVA results, we can conclude the following, based on the p-values and a significance level of 0.05:
+
+*the p-value of education is < 2e-16 (significant), which indicates that the levels of education are associated with significant different age.
+
+*the p-value of currentSmoker is < 2e-16 (significant), which indicates that the status of currentSmoker are associated with significant different age.
+
+*the p-value for the interaction between education and currentSmoker is 0.138 (non-significant), which indicates that the relationships between levels of education and age doesn't depend on the status of currentSmoker.
+
+
+```{r echo=TRUE}
+#Check the homogeneity of variance assumption
+plot(res.aov3, 1)
+
+leveneTest(age ~ education * currentSmoker, data = my_data)
+
+# 2. Normality
+plot(res.aov3, 2)
+```
+
+The residuals versus fits plot is used to check the homogeneity of variances. In the plot above, there is no evident relationships (no pattern) between residuals and fitted values (the mean of each groups), which is good. So, we can assume the homogeneity of variances.
+
+Notice: Points 1202 and 2321 are detected as outliers, which can severely affect normality and homogeneity of variance. It can be useful to remove outliers to meet the test assumptions.
+
+
+### Independence test
+
+Independence tests are used to determine if there is a significant relationship between two categorical variables. There exists two different types of independence test:
+
+1. the Chi-square test (the most common)
+2. the Fisher’s exact test
+
+On the one hand, the Chi-square test is used when the sample is large enough (in this case thep-value is an approximation that becomes exact when the sample becomes infinite, which is the case for many statistical tests). On the other hand, the Fisher’s exact test is used when the sample is small (and in this case the p-value is exact and is not an approximation).
+
+The literature indicates that the usual rule for deciding whether the $\chi^2$
+approximation is good enough is that the Chi-square test is not appropriate when the expected values in one of the cells of the contingency table is less than 5, and in this case the Fisher’s exact test is preferred 
+ 
+
+The hypotheses of the Fisher’s exact test are the same as for the Chi-square test:
+
+NULL: the variables are independent, there is no relationship between the two categorical variables. Knowing the value of one variable does not help to predict the value of the other variable.
+Alternative: the variables are dependent, there is a relationship between the two categorical variables. Knowing the value of one variable helps to predict the value of the other variable.
+
+```{r echo=TRUE}
+
+table(my_data$education,my_data$currentSmoker)
+
+my_data2 = data.frame(table(my_data$education,my_data$currentSmoker))
+colnames(my_data2) = c("education","currentSmoker","count")
+my_data2$education=factor(my_data2$education)
+my_data2$currentSmoker=factor(my_data2$currentSmoker)
+
+library(ggmosaic)
+ggplot(data = my_data2) +
+  geom_mosaic(aes(x = product(currentSmoker), fill= education, weight = count)) +
+  theme_mosaic() + 
+  scale_fill_simpsons() +
+  scale_color_simpsons() +
+  scale_x_productlist(expand = c(0, 0)) + # Remove space between x-axis and plot
+  scale_y_continuous(expand = c(0, 0)) +  # Remove space between y-axis and plot
+  ylab("Percentage") +
+  theme(
+    #legend.position = "bottom",       # Position legend at the bottom
+    #legend.direction = "horizontal",  # Arrange legend items in a row
+    #legend.box = "horizontal",        # Ensure the legend box is horizontal
+    panel.grid.major = element_blank(), # Remove major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    panel.border = element_blank(),     # Remove all borders first
+    axis.text.x = element_text(angle = 15, hjust = 1) # Rotate x-axis labels
+  )
+
+```
+
+
+```{r echo=TRUE}
+my_data3 = table(my_data$education, my_data$currentSmoker)
+print(my_data3)
+
+chisq.test(my_data3)
+fisher.test(my_data3)
+
+# p-value<0.05 => there is a significant relationship between the two categorical variables
+
+```
+
+$\bf{Exercise 4:}$ Is there significant correlation between "education" and "TenYearCHD"?
+
+```{r echo=TRUE}
+my_data4 = table(framingham$education,framingham$TenYearCHD)
+print(my_data4)
+
+chisq.test(my_data4)
+fisher.test(my_data4)
+
+# p-value<0.05 => there is a significant relationship between the two categorical variables
+
+```
+
+## Statistical analysis
+
+### linear regression model
+
+#### Simple linear regression model (one independent variable)
+
+$Y = a + b*X$: Y variable (the dependent or response variable) is a function of the X variable\\
+
+$\bf{Question:}$ For current smoker, how the sysBP change as age increase?
+
+Y = sysBP, X = age  => sysBP~age
+
+```{r echo=TRUE}
+
+plot(sysBP~age, data = framingham[framingham$currentSmoker==1,])
+
+lm.simple = lm(sysBP~age, data = framingham[framingham$currentSmoker==1,]) #Create the linear regression
+lm.simple #If we look at ‘lm.simple’ we don’t get much to work with, just the coefficient estimates for the intercept and slope
+
+summary(lm.simple) #Review the results
+
+#Intepret:
+#1. the p-value for the slope (age) coefficient is less than 0.05, allowing you to say that the association of sysBP and age is statistically significant.
+#2. sysBP = 84.699 + 0.936 * age
+#3. R-squared: proportion of variance in the data explained by the model
+#4. F-statistic and p-value: test whether all coefficients in the model are zero.
+
+# Plot the scatterplot as before:
+plot(sysBP~age, data = framingham[framingham$currentSmoker==1,])
+# And then plot the fitted line:
+abline(lm.simple,col="red")
+```
+
+#### Multiple linear regression model (more than one independent variables)
+
+$Y = a + b1*X1 + b2*X2 + b3*X3...$: Y variable (the dependent or response variable) is a function of multiple X variables.\\
+
+Y = glucose, X = all other variables in dataset  => glucose ~.
+
+$\bf{Equation:}$ Glucose = 61.8266 + 0.8771 * 1(male==1) + 0.0420 * age + 0.4276 * 1(education=2) + 1.5228 * 1(education=3) + ...
+
+
+```{r echo=TRUE}
+lm.multiple = lm(glucose~., data = framingham) #Create the linear regression
+summary(lm.multiple) #Review the results
+# => totChol  does not significant affect the regression model.
+
+#Detect Influential Points
+cookdis = cooks.distance(lm.multiple)
+plot(cooks.distance(lm.multiple), pch = 16, col = "blue") #Plot the Cooks Distances.
+potential.out = which(cookdis > 0.05)
+
+#1. Someone made a recording error
+#2. Someone made a fundamental mistake collecting the observation
+#3. The data point is perfectly valid, in which case the model cannot account for the behavior.
+
+lm.multiple = lm(glucose~., data = framingham[-potential.out,]) #Create the linear regression
+summary(lm.multiple) #Review the results
+
+#If the case is 1 or 2, then you can remove the point (or correct it). If it's 3, it's not worth deleting a valid point; maybe you can try on a non-linear model rather than a linear model like linear regression.
+
+```
+
+### logistic regression model
+
+Logistic regression is a type of regression analysis in statistics used for prediction of outcome of a categorical dependent variable from a set of predictor or independent variables. In logistic regression the dependent variable is always binary. Logistic regression is mainly used to for prediction and also calculating the probability of success.
+
+Logistic regression equation: $P = e^{\beta_0+\beta_1 X_1 + \beta_2 X_2}/1+e^{\beta_0+\beta_1 X_1 + \beta_2 X_2}$
+
+In this dataset, we can generate logistic regression as:
+
+$logit(p)=log(p/(1−p))=\beta_0+\beta_1∗1_{male}+\beta_2∗age+\beta_3∗cigsPerDay+\beta_4∗totChol+\beta_5∗sysBP+\beta_6∗glucose$
+
+
+```{r echo=TRUE}
+my_data = framingham[,c(1,2,5,10,11,15,16)]
+logit.model <- glm(TenYearCHD ~.,family=binomial(link='logit'),data=my_data)
+summary(logit.model)
+```
+
+
+$\bf{Interpretation:}$
+
+This fitted model shows that, holding all other features constant, the odds of getting diagnosed with heart disease for males (male = 1)over that of females (male = 0) is $e^{0.5617} = 1.7537$. In terms of percent change, we can say that the odds for males are 75.37% higher than the odds for females.
+
+
+The coefficient for age says that, holding all others constant, we will see 7% increase in the odds of getting diagnosed with CDH for a one year increase in age since $e^{0.0660} = 1.0682$.
+
+Similarly , with every extra cigarette one smokes there is a 2% increase in the odds of CDH.
+
+There is a 1.7% increase in odds for every unit increase in systolic Blood Pressure.
+
+#### Classification perfromance
+
+```{r echo=TRUE}
+logit_P = predict(logit.model, newdata = my_data[,-7],type = 'response' )
+pred.data <- ifelse(logit_P > 0.5,1,0) # Probability check
+library(caret)
+CM= confusionMatrix(as.factor(pred.data),positive = "1", reference = my_data$TenYearCHD)
+print(CM)
+
+
+#ROC-curve using pROC library
+library(pROC)
+roc_score=roc(my_data$TenYearCHD, logit_P) #AUC score
+plot(roc_score ,main ="ROC curve -- Logistic Regression ")
+pROC::roc(my_data$TenYearCHD, logit_P,plot=TRUE, print.auc=TRUE, show.thres=TRUE)
+
+```
+
+$\bf{Exercise 5:}$ Using the same exploratory variables as above, compare the logistic regression model  male only and the logistic regression model for female only, which one performs better in terms of AUC? 
+
+```{r echo=TRUE}
+my_data.male = framingham[which(framingham$male==1),c(2,5,10,11,15,16)]
+logit.model.male <- glm(TenYearCHD ~.,family=binomial(link='logit'),data=my_data.male)
+summary(logit.model.male)
+logit_P.male = predict(logit.model.male, newdata = my_data.male[,-6],type = 'response' )
+pred.data.male <- ifelse(logit_P.male > 0.5,1,0) # Probability check
+library(caret)
+CM.male= confusionMatrix(as.factor(pred.data.male),positive = "1", reference = my_data.male$TenYearCHD)
+print(CM.male)
+#ROC-curve using pROC library
+library(pROC)
+pROC::roc(my_data.male$TenYearCHD, logit_P.male,plot=TRUE, print.auc=TRUE, show.thres=TRUE)
+
+
+
+my_data.female = framingham[which(framingham$male!=1),c(2,5,10,11,15,16)]
+logit.model.female <- glm(TenYearCHD ~.,family=binomial(link='logit'),data=my_data.female)
+summary(logit.model.female)
+logit_P.female = predict(logit.model.female, newdata = my_data.female[,-6],type = 'response' )
+pred.data.female <- ifelse(logit_P.female > 0.5,1,0) # Probability check
+library(caret)
+CM.female= confusionMatrix(as.factor(pred.data.female),positive = "1", reference = my_data.female$TenYearCHD)
+print(CM.female)
+#ROC-curve using pROC library
+library(pROC)
+pROC::roc(my_data.female$TenYearCHD, logit_P.female,plot=TRUE, print.auc=TRUE, show.thres=TRUE)
+```
+
