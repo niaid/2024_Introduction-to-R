@@ -4,7 +4,7 @@ The goal of this repository is to provide a series of course materials that is u
 
 Instructors: Yuyan Yi, Mina Peyton
 
-Contact: https://niaid-amp.powerappsportals.us/
+Contact email: bioinformatics@niaid.nih.gov
 
 **Courses:**
 
